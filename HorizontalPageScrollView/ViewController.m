@@ -40,11 +40,17 @@
     // Dispose of any resources that can be recreated.
 }
 
--(int)numberInView
+//start pos
+-(int)startIndex:(HorizontalPageScrollView*)scrollView
+{
+    return 1;
+}
+
+-(int)numberInView:(HorizontalPageScrollView*)scrollView;
 {
     return [imageFiles count];
 }
--(UIView*)viewAtIndex:(int)index
+-(UIView*)viewAtIndex:(int)index scrollView:(HorizontalPageScrollView*)scrollView;
 {
     UIImageView* imageView = [[UIImageView alloc] initWithFrame:self.view.bounds];
     UIImage* image = [UIImage imageWithContentsOfFile:[imageFiles objectAtIndex:index]];

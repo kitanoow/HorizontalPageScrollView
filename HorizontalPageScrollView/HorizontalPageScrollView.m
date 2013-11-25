@@ -8,11 +8,14 @@
 
 #import "HorizontalPageScrollView.h"
 
+
 @implementation HorizontalPageScrollView
 {
     NSInteger curIndex;
     NSInteger count;
     NSMutableArray *contentViews;
+    BOOL setup_flg;
+    UIScrollView *mainScrollView;
     
 }
 - (id)initWithFrame:(CGRect)frame
@@ -20,20 +23,32 @@
     self = [super initWithFrame:frame];
     if (self) {
         // Initialization code
+        mainScrollView = [[UIScrollView alloc] initWithFrame:frame];
+        [self addSubview:mainScrollView];
         curIndex = 0;
-        self.delegate = self;
-        self.pagingEnabled = YES;
-        self.showsHorizontalScrollIndicator = NO;
-        self.showsVerticalScrollIndicator = NO;
-        self.scrollsToTop = NO;
+        mainScrollView.delegate = self;
+        mainScrollView.pagingEnabled = YES;
+        mainScrollView.showsHorizontalScrollIndicator = NO;
+        mainScrollView.showsVerticalScrollIndicator = NO;
+        mainScrollView.scrollsToTop = NO;
         contentViews = [[NSMutableArray alloc] init];
+        setup_flg = NO;
     }
     return self;
 }
 
 - (void)layoutSubviews {
-    count = [_datasource numberInView];
-    [self setUpView];
+    if(setup_flg == NO) {
+        setup_flg = YES;
+        count = [_datasource numberInView:self];
+        curIndex = [_datasource startIndex:self];
+        mainScrollView.contentSize = CGSizeMake(self.frame.size.width * count,self.frame.size.height);
+        mainScrollView.contentOffset = CGPointMake(self.frame.size.width* curIndex, 0);
+        [self setUpView];
+        [self setContentAtIndex:curIndex-1 contentView:contentViews[0]];
+        [self setContentAtIndex:curIndex   contentView:contentViews[1]];
+        [self setContentAtIndex:curIndex+1 contentView:contentViews[2]];
+    }
 }
 
 -(void)setUpView
@@ -44,15 +59,11 @@
     
     for (int i=0; i < 3; i++) {
         UIScrollView *contentView = [self getContentScrollView:frame];
-        [self addSubview:contentView];
+        [mainScrollView addSubview:contentView];
         [contentViews addObject:contentView];
         frame.origin.x += frame.size.width;
     }
     
-    self.contentSize = CGSizeMake(self.frame.size.width * count,self.frame.size.height);
-    [self setContentAtIndex:curIndex-1 contentView:contentViews[0]];
-    [self setContentAtIndex:curIndex   contentView:contentViews[1]];
-    [self setContentAtIndex:curIndex+1 contentView:contentViews[2]];
 }
 
 - (void)setContentAtIndex:(NSInteger)index contentView:(UIScrollView*)scrollView
@@ -66,12 +77,12 @@
         scrollView.delegate = nil;
         return;
     }
-    [scrollView addSubview: [_datasource viewAtIndex:index]];
+    [scrollView addSubview: [_datasource viewAtIndex:index scrollView:self]];
     
 }
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
 {
-    if(![scrollView isEqual:self]) return;
+    if(![scrollView isEqual:mainScrollView]) return;
     CGFloat pos   = scrollView.contentOffset.x / scrollView.bounds.size.width;
     CGFloat deff = pos - (CGFloat)curIndex;
     if (fabs(deff) >= 1.0f) {
@@ -82,12 +93,14 @@
         } else {
             [self goPrevImage];
         }
-        
     }
 }
 -(void)goPrevImage
 {
     curIndex--;
+    if ([_delegate respondsToSelector:@selector(changeCurrentIndex:)]) {
+        [_delegate changeCurrentIndex:curIndex];
+    }
     UIScrollView* tmpView = contentViews[1];
     contentViews[1] = contentViews[0];
     contentViews[0] = contentViews[2];
@@ -102,6 +115,9 @@
 -(void)goNextImage
 {
     curIndex++;
+    if ([_delegate respondsToSelector:@selector(changeCurrentIndex:)]) {
+        [_delegate changeCurrentIndex:curIndex];
+    }
     UIScrollView* tmpView = contentViews[1];
     contentViews[1] = contentViews[2];
     contentViews[2] = contentViews[0];
@@ -127,11 +143,20 @@
     
 }
 
--(UIView*)viewForZoomingInScrollView:(UIScrollView *)scrollView
-{
-    return [[scrollView subviews] objectAtIndex:0];
-}
 
+-(void)changeAllFrame:(CGRect)_frame
+{
+    CGRect frame = CGRectZero;
+    frame.size = _frame.size;
+    frame.origin.x = (curIndex-1) * frame.size.width;
+    
+    for (int i=0; i < 3; i++) {
+        UIScrollView *contentView = contentViews[i];
+        contentView.frame = frame;
+        frame.origin.x += frame.size.width;
+    }
+    
+}
 
 
 @end
